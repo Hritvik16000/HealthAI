@@ -2,7 +2,9 @@
 __pycache__
 *.pyc
 mlruns/
-artifacts/
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/interpretability/**
 models/
 data/raw/*
 !data/raw/.gitkeep
