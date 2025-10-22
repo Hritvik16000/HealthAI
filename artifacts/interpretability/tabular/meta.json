@@ -1,0 +1,21 @@
+{
+  "classification": {
+    "shap_summary": "shap_summary_classification.png",
+    "shap_bar": "shap_bar_classification.png",
+    "lime_html_samples": [
+      "lime_clf_0.html",
+      "lime_clf_1.html",
+      "lime_clf_2.html"
+    ]
+  },
+  "regression": {
+    "shap_summary": "shap_summary_regression.png",
+    "shap_bar": "shap_bar_regression.png",
+    "lime_html_samples": [
+      "lime_reg_0.html",
+      "lime_reg_1.html",
+      "lime_reg_2.html"
+    ]
+  },
+  "feature_names_count": 12
+}
