@@ -1,0 +1,9 @@
+task: "sentiment"
+dataset:
+  csv: "data/processed/feedback.csv"
+text_col: "text"
+label_col: "label"
+model_name: "distilbert-base-uncased"
+train:
+  epochs: 2
+  batch_size: 16

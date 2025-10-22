@@ -1,0 +1,16 @@
+defaults: configs/defaults.yaml
+task: "classification"  # classification | regression
+dataset:
+  csv: "data/processed/tabular_train.csv"
+target: "readmission_30d"
+features:
+  numeric: ["age","bmi","hr","sbp","dbp","glucose"]
+  categorical: ["sex","smoker","diabetic"]
+model:
+  type: "xgboost"
+  params:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+eval:
+  metrics: ["roc_auc","f1","precision","recall"]

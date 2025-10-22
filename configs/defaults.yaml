@@ -1,0 +1,5 @@
+seed: 42
+paths:
+  data_dir: data
+  mlflow_uri: mlruns
+  registry: model_cards

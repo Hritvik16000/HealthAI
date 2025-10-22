@@ -1,0 +1,3 @@
+project_name: HealthAI
+tracking_uri: mlruns
+artifacts_dir: artifacts
