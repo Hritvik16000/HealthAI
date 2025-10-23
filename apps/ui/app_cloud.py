@@ -7,6 +7,28 @@ from PIL import Image
 
 st.set_page_config(page_title="HealthAI (Cloud)", layout="wide")
 
+import os, requests
+HF_API_TOKEN = st.secrets.get("HF_API_TOKEN", os.getenv("HF_API_TOKEN",""))
+
+def translate_hf(text: str, src: str, tgt: str) -> str:
+    if not text.strip():
+        return ""
+    if not HF_API_TOKEN:
+        return text
+    model = f"Helsinki-NLP/opus-mt-{src.lower()}-{tgt.lower()}"
+    url = f"https://api-inference.huggingface.co/models/{model}"
+    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+    try:
+        r = requests.post(url, headers=headers, json={"inputs": text}, timeout=20)
+        if r.status_code == 200:
+            out = r.json()
+            if isinstance(out, list) and out and "translation_text" in out[0]:
+                return out[0]["translation_text"]
+        return text
+    except Exception:
+        return text
+
+
 TAB_DIR = Path("artifacts/tabular")
 NLP_DIR = Path("artifacts/nlp")
 
@@ -103,13 +125,14 @@ with sentiment_tab:
             st.json({"label": "neutral"})
 
 with translate_tab:
-    st.subheader("Medical Translator (Echo fallback)")
+    st.subheader("Medical Translator (HF Inference API)")
     t = st.text_area("Input")
     s1,s2 = st.columns(2)
     with s1: src = st.text_input("Source","en")
     with s2: tgt = st.text_input("Target","es")
     if st.button("Translate"):
-        st.json({"translation": t})
+        out = translate_hf(t, src, tgt)
+        st.json({"translation": out})
 
 with forecast_tab:
     st.subheader("Forecast HR (Cloud, moving-average fallback)")
