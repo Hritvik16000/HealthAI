@@ -16,8 +16,8 @@ def _safe_get(url, payload=None, files=None):
     except Exception:
         return {"status":"down"}
 
-dashboard_tab, risk_tab, los_tab, sentiment_tab, translate_tab, forecast_tab, imaging_tab, explain_tab, system_tab = st.tabs(
-    ["Dashboard","Risk","LOS","Sentiment","Translate","Forecast","Imaging","Explain","System"]
+dashboard_tab, risk_tab, los_tab, sentiment_tab, translate_tab, forecast_tab, imaging_tab, system_tab = st.tabs(
+    ["Dashboard","Risk","LOS","Sentiment","Translate","Forecast","Imaging","System"]
 )
 
 with dashboard_tab:
@@ -115,14 +115,8 @@ with imaging_tab:
         files = {"file": ("upload.png", bio.getvalue(), "image/png")}
         r = _safe_get(f"{API_BASE}/classify/pneumonia", files=files)
         c1,c2 = st.columns([1,1])
-        with c1: st.image(img, caption="Input", use_container_width=True)
+        with c1: st.image(img, caption="Input")
         with c2: st.json(r)
-
-with explain_tab:
-    st.subheader("Model Interpretability (Tabular)")
-    import pathlib
-    st.image(f"{API_BASE}/artifacts/shap_summary_classification.png", caption="SHAP Summary – Classification", use_container_width=True)
-    st.image(f"{API_BASE}/artifacts/shap_summary_regression.png", caption="SHAP Summary – Regression", use_container_width=True)
 
 with system_tab:
     st.subheader("System")

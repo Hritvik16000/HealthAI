@@ -191,3 +191,7 @@ def get_artifact(fname: str):
     if not f.exists():
         return {"error":"not found"}
     return FileResponse(str(f))
+
+
+from fastapi.staticfiles import StaticFiles
+app.mount('/artifacts', StaticFiles(directory='artifacts'), name='artifacts')
