@@ -11,3 +11,4 @@ python -m src.time_series.train_lstm
 python -m src.nlp.train_clinical_nlp
 Artifacts
 mlruns for tracking, artifacts for outputs, reports for documentation
+https://healthai-hxhickyvbxzztpnxydathv.streamlit.app - Access the App using this link.
