@@ -12,3 +12,11 @@ data/processed/*
 !data/processed/.gitkeep
 .env
 .DS_Store
+# --- keep most artifacts ignored but allow serving essentials ---
+artifacts/*
+!artifacts/tabular/clf_gb.pkl
+!artifacts/tabular/reg_gb.pkl
+!artifacts/tabular/preprocess_pipeline.pkl
+!artifacts/nlp/sentiment_tfidf.pkl
+!artifacts/timeseries/meta.json
+!artifacts/cnn/pneumonia_cnn.pt

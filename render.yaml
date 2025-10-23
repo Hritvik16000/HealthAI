@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: healthai-api
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements_api.txt
+    startCommand: uvicorn apps.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: CORS_ORIGINS
+        # Fill this after Streamlit Cloud gives you the URL, e.g. https://yourname-healthai.streamlit.app
+        value: "https://your-streamlit-url"
