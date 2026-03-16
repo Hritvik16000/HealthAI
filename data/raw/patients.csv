@@ -1,0 +1,11 @@
+age,gender,bmi,blood_pressure,glucose,cholesterol,heart_rate,smoker,diabetes_history,risk_label,length_of_stay
+45,M,27.5,130,110,210,82,Yes,Yes,High,6
+30,F,22.1,118,92,180,72,No,No,Low,2
+60,M,31.4,145,150,250,90,Yes,Yes,High,8
+50,F,29.0,138,130,220,85,No,Yes,Medium,5
+38,M,24.3,122,98,190,76,No,No,Low,3
+67,F,33.2,155,170,270,95,Yes,Yes,High,10
+29,F,21.0,115,88,175,70,No,No,Low,2
+55,M,30.1,142,140,240,88,Yes,Yes,High,7
+42,F,26.7,128,108,205,80,No,No,Medium,4
+48,M,28.5,135,120,215,84,Yes,No,Medium,5

@@ -1,0 +1,2 @@
+classification_accuracy,classification_f1_weighted,regression_mae,regression_rmse,regression_r2,clustering_silhouette,sentiment_precision_weighted,sentiment_recall_weighted,sentiment_f1_weighted
+0.5,0.5,0.71,0.7201,0.4815,0.5485,0.25,0.5,0.3333
