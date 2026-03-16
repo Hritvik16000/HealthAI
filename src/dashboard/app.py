@@ -1,16 +1,17 @@
 from pathlib import Path
 import sys
+import json
 
-# --- ensure project root is importable ---
 BASE_DIR = Path(__file__).resolve().parents[2]
 sys.path.append(str(BASE_DIR))
 
-import json
 import joblib
 import pandas as pd
 import streamlit as st
 
 from src.utils.sentiment_engine import HybridSentimentEngine
+from src.rag.chatbot import HealthRAGChatbot
+from src.translation.translator_utils import EnHiTranslator
 
 TAB_DIR = BASE_DIR / "artifacts" / "tabular"
 CLUSTER_DIR = BASE_DIR / "artifacts" / "cluster"
@@ -22,6 +23,8 @@ risk_encoder = joblib.load(TAB_DIR / "risk_label_encoder.pkl")
 los_model = joblib.load(TAB_DIR / "los_regressor.pkl")
 cluster_model = joblib.load(CLUSTER_DIR / "kmeans_pipeline.pkl")
 sentiment_engine = HybridSentimentEngine()
+chatbot = HealthRAGChatbot()
+translator_en_hi = EnHiTranslator()
 
 cluster_names = {}
 cluster_names_path = CLUSTER_DIR / "cluster_names.json"
@@ -31,13 +34,16 @@ if cluster_names_path.exists():
 
 st.set_page_config(page_title="HealthAI Dashboard", layout="wide")
 st.title("HealthAI Suite Dashboard")
+st.caption("Full-scope demonstrator: analytics, NLP, chatbot, translation, and advanced modules")
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tabs = st.tabs([
     "Risk Prediction",
     "Length of Stay",
     "Patient Clustering",
     "Association Rules",
-    "Sentiment Analysis"
+    "Sentiment Analysis",
+    "Live Chatbot",
+    "Translation"
 ])
 
 with st.sidebar:
@@ -64,39 +70,77 @@ patient_df = pd.DataFrame([{
     "diabetes_history": diabetes_history
 }])
 
-with tab1:
+cluster_df = patient_df[["age","bmi","blood_pressure","glucose","cholesterol","heart_rate","smoker","diabetes_history"]]
+
+with tabs[0]:
     if st.button("Predict Risk"):
         pred = risk_model.predict(patient_df)[0]
         label = risk_encoder.inverse_transform([pred])[0]
         st.success(f"Predicted Risk Category: {label}")
 
-with tab2:
+with tabs[1]:
     if st.button("Predict Length of Stay"):
         pred = los_model.predict(patient_df)[0]
         st.info(f"Predicted Length of Stay: {pred:.2f} days")
 
-with tab3:
+with tabs[2]:
     if st.button("Assign Cluster"):
-        cluster = int(cluster_model.predict(patient_df)[0])
+        cluster = int(cluster_model.predict(cluster_df)[0])
         cluster_name = cluster_names.get(str(cluster), cluster_names.get(cluster, f"Cluster {cluster}"))
-        st.warning(f"Cluster ID: {cluster}")
+        st.warning(f"Assigned Cluster ID: {cluster}")
         st.success(f"Cluster Meaning: {cluster_name}")
 
-with tab4:
+with tabs[3]:
     rules_path = ASSOC_DIR / "association_rules.csv"
     if rules_path.exists():
-        rules_df = pd.read_csv(rules_path)
-        st.dataframe(rules_df, use_container_width=True)
+        st.dataframe(pd.read_csv(rules_path), use_container_width=True)
 
-with tab5:
-    review = st.text_area("Enter patient review")
+with tabs[4]:
+    review = st.text_area("Enter patient review", "The nursing staff were caring and attentive.")
     if st.button("Analyze Sentiment"):
         result = sentiment_engine.predict(review)
-        st.success(f"Sentiment: {result['label']}")
+        st.success(f"Predicted Sentiment: {result['label']}")
+        st.json(result)
+
+with tabs[5]:
+    st.subheader("Real-Time Healthcare Chatbot")
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    user_prompt = st.chat_input("Ask a healthcare question...")
+    if user_prompt:
+        st.session_state.chat_history.append({"role": "user", "content": user_prompt})
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                result = chatbot.ask(user_prompt, history=st.session_state.chat_history)
+                answer = result["answer"]
+                st.markdown(answer)
+
+                with st.expander("Retrieved Context"):
+                    for i, ctx in enumerate(result["contexts"], 1):
+                        st.markdown(f"**Context {i}:** {ctx}")
+
+        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+
+    if st.button("Clear Chat History"):
+        st.session_state.chat_history = []
+        st.rerun()
+
+with tabs[6]:
+    text = st.text_input("English to Hindi", "Please take your medicines on time.")
+    if st.button("Translate"):
+        out = translator_en_hi.translate(text)
+        st.success(out)
 
 st.markdown("---")
-
 patients_path = DATA_DIR / "patients_clean.csv"
 if patients_path.exists():
-    df = pd.read_csv(patients_path)
-    st.dataframe(df.head(), use_container_width=True)
+    st.dataframe(pd.read_csv(patients_path).head(), use_container_width=True)

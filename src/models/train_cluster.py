@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
@@ -15,52 +16,93 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 df = pd.read_csv(DATA_PATH)
 
 feature_cols = [
-    "age", "gender", "bmi", "blood_pressure",
-    "glucose", "cholesterol", "heart_rate",
-    "smoker", "diabetes_history"
+    "age",
+    "bmi",
+    "blood_pressure",
+    "glucose",
+    "cholesterol",
+    "heart_rate",
+    "smoker",
+    "diabetes_history",
 ]
 
 X = df[feature_cols].copy()
 
-pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("kmeans", KMeans(n_clusters=3, random_state=42, n_init=20))
-])
+# give more influence to clinically strong risk features
+feature_weights = {
+    "age": 1.2,
+    "bmi": 1.1,
+    "blood_pressure": 1.5,
+    "glucose": 1.7,
+    "cholesterol": 1.5,
+    "heart_rate": 1.0,
+    "smoker": 1.3,
+    "diabetes_history": 1.4,
+}
 
-clusters = pipeline.fit_predict(X)
+for col, weight in feature_weights.items():
+    X[col] = X[col] * weight
 
-score = silhouette_score(StandardScaler().fit_transform(X), clusters)
-print("Silhouette Score:", round(float(score), 4))
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-df["cluster"] = clusters
+# manually-separated archetypes to prevent centroid collapse
+# order of features:
+# age, bmi, blood_pressure, glucose, cholesterol, heart_rate, smoker, diabetes_history
+seed_profiles_raw = np.array([
+    [28, 22, 112, 88, 170, 72, 0, 0],   # lower-risk stable
+    [48, 28, 134, 118, 215, 84, 1, 0],  # moderate-risk general
+    [68, 33, 160, 175, 275, 96, 1, 1],  # high-risk metabolic
+], dtype=float)
 
-profiles = df.groupby("cluster")[feature_cols].mean().round(2)
+for i, col in enumerate(feature_cols):
+    seed_profiles_raw[:, i] = seed_profiles_raw[:, i] * feature_weights[col]
 
-# create human-friendly names
-cluster_names = {}
+seed_profiles_scaled = scaler.transform(seed_profiles_raw)
+
+kmeans = KMeans(
+    n_clusters=3,
+    init=seed_profiles_scaled,
+    n_init=1,
+    random_state=42
+)
+
+clusters = kmeans.fit_predict(X_scaled)
+
+sil = silhouette_score(X_scaled, clusters)
+print("Silhouette Score:", round(float(sil), 4))
+
+df_out = df.copy()
+df_out["cluster"] = clusters
+
+profiles = df_out.groupby("cluster")[feature_cols].mean().round(2)
+
+# map cluster ids to ordered risk meaning based on profile severity
+severity = {}
 for cluster_id, row in profiles.iterrows():
-    risk_points = 0
-    if row["age"] >= 55:
-        risk_points += 1
-    if row["bmi"] >= 29:
-        risk_points += 1
-    if row["blood_pressure"] >= 135:
-        risk_points += 1
-    if row["glucose"] >= 120:
-        risk_points += 1
-    if row["cholesterol"] >= 220:
-        risk_points += 1
-    if row["smoker"] >= 0.5:
-        risk_points += 1
-    if row["diabetes_history"] >= 0.5:
-        risk_points += 1
+    score = (
+        row["age"] * 0.03 +
+        row["bmi"] * 0.04 +
+        row["blood_pressure"] * 0.05 +
+        row["glucose"] * 0.06 +
+        row["cholesterol"] * 0.04 +
+        row["heart_rate"] * 0.02 +
+        row["smoker"] * 1.0 +
+        row["diabetes_history"] * 1.2
+    )
+    severity[int(cluster_id)] = float(score)
 
-    if risk_points >= 5:
-        cluster_names[int(cluster_id)] = "High-Risk Metabolic"
-    elif risk_points >= 3:
-        cluster_names[int(cluster_id)] = "Moderate-Risk General"
-    else:
-        cluster_names[int(cluster_id)] = "Lower-Risk Stable"
+ordered = [cid for cid, _ in sorted(severity.items(), key=lambda x: x[1])]
+cluster_names = {
+    ordered[0]: "Lower-Risk Stable",
+    ordered[1]: "Moderate-Risk General",
+    ordered[2]: "High-Risk Metabolic",
+}
+
+pipeline = Pipeline([
+    ("scaler", scaler),
+    ("kmeans", kmeans)
+])
 
 joblib.dump(pipeline, ARTIFACT_DIR / "kmeans_pipeline.pkl")
 profiles.to_csv(ARTIFACT_DIR / "cluster_profiles.csv")
@@ -68,8 +110,13 @@ profiles.to_csv(ARTIFACT_DIR / "cluster_profiles.csv")
 with open(ARTIFACT_DIR / "cluster_names.json", "w") as f:
     json.dump(cluster_names, f, indent=2)
 
-print("[OK] Cluster pipeline saved")
-print("[OK] Cluster profiles saved")
-print("[OK] Cluster names saved")
+df_out.to_csv(ARTIFACT_DIR / "clustered_patients_preview.csv", index=False)
+
+print("[OK] Saved kmeans_pipeline.pkl")
+print("[OK] Saved cluster_profiles.csv")
+print("[OK] Saved cluster_names.json")
+print("[OK] Saved clustered_patients_preview.csv")
+print("\nCluster Profiles:\n")
 print(profiles)
+print("\nCluster Names:\n")
 print(cluster_names)

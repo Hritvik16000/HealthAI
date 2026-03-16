@@ -3,5 +3,10 @@ __pycache__/
 *.pyc
 .DS_Store
 .ipynb_checkpoints/
-data/processed/
-artifacts/
+.env
+.env.*
+mlflow.db
+mlruns/
+*.sqlite
+*.log
+.streamlit/secrets.toml
