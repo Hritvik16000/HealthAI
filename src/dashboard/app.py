@@ -1,12 +1,18 @@
 from pathlib import Path
+import sys
+
+# --- ensure project root is importable ---
+BASE_DIR = Path(__file__).resolve().parents[2]
+sys.path.append(str(BASE_DIR))
+
+import json
 import joblib
 import pandas as pd
 import streamlit as st
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+from src.utils.sentiment_engine import HybridSentimentEngine
 
 TAB_DIR = BASE_DIR / "artifacts" / "tabular"
-NLP_DIR = BASE_DIR / "artifacts" / "nlp"
 CLUSTER_DIR = BASE_DIR / "artifacts" / "cluster"
 ASSOC_DIR = BASE_DIR / "artifacts" / "association"
 DATA_DIR = BASE_DIR / "data" / "processed"
@@ -14,13 +20,17 @@ DATA_DIR = BASE_DIR / "data" / "processed"
 risk_model = joblib.load(TAB_DIR / "risk_classifier.pkl")
 risk_encoder = joblib.load(TAB_DIR / "risk_label_encoder.pkl")
 los_model = joblib.load(TAB_DIR / "los_regressor.pkl")
-cluster_model = joblib.load(CLUSTER_DIR / "kmeans.pkl")
-sentiment_model = joblib.load(NLP_DIR / "sentiment_model.pkl")
-tfidf_vectorizer = joblib.load(NLP_DIR / "tfidf_vectorizer.pkl")
+cluster_model = joblib.load(CLUSTER_DIR / "kmeans_pipeline.pkl")
+sentiment_engine = HybridSentimentEngine()
+
+cluster_names = {}
+cluster_names_path = CLUSTER_DIR / "cluster_names.json"
+if cluster_names_path.exists():
+    with open(cluster_names_path, "r") as f:
+        cluster_names = json.load(f)
 
 st.set_page_config(page_title="HealthAI Dashboard", layout="wide")
 st.title("HealthAI Suite Dashboard")
-st.caption("Patient analytics, risk prediction, LOS forecasting, clustering, association rules, and sentiment analysis")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Risk Prediction",
@@ -55,44 +65,37 @@ patient_df = pd.DataFrame([{
 }])
 
 with tab1:
-    st.subheader("Disease Risk Classification")
     if st.button("Predict Risk"):
         pred = risk_model.predict(patient_df)[0]
         label = risk_encoder.inverse_transform([pred])[0]
         st.success(f"Predicted Risk Category: {label}")
 
 with tab2:
-    st.subheader("Length of Stay Prediction")
     if st.button("Predict Length of Stay"):
         pred = los_model.predict(patient_df)[0]
         st.info(f"Predicted Length of Stay: {pred:.2f} days")
 
 with tab3:
-    st.subheader("Patient Segmentation")
     if st.button("Assign Cluster"):
-        cluster = cluster_model.predict(patient_df)[0]
-        st.warning(f"Assigned Cluster ID: {cluster}")
+        cluster = int(cluster_model.predict(patient_df)[0])
+        cluster_name = cluster_names.get(str(cluster), cluster_names.get(cluster, f"Cluster {cluster}"))
+        st.warning(f"Cluster ID: {cluster}")
+        st.success(f"Cluster Meaning: {cluster_name}")
 
 with tab4:
-    st.subheader("Association Rules")
     rules_path = ASSOC_DIR / "association_rules.csv"
     if rules_path.exists():
         rules_df = pd.read_csv(rules_path)
-        show_cols = [c for c in ["antecedents", "consequents", "support", "confidence", "lift"] if c in rules_df.columns]
-        st.dataframe(rules_df[show_cols], use_container_width=True)
-    else:
-        st.error("Association rules file not found.")
+        st.dataframe(rules_df, use_container_width=True)
 
 with tab5:
-    st.subheader("Patient Feedback Sentiment")
-    review = st.text_area("Enter patient review", "The nursing staff were caring and attentive.")
+    review = st.text_area("Enter patient review")
     if st.button("Analyze Sentiment"):
-        X = tfidf_vectorizer.transform([review])
-        pred = sentiment_model.predict(X)[0]
-        st.success(f"Predicted Sentiment: {pred}")
+        result = sentiment_engine.predict(review)
+        st.success(f"Sentiment: {result['label']}")
 
 st.markdown("---")
-st.subheader("Processed Dataset Preview")
+
 patients_path = DATA_DIR / "patients_clean.csv"
 if patients_path.exists():
     df = pd.read_csv(patients_path)

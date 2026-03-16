@@ -17,12 +17,12 @@ Synthetic demo datasets were used for tabular patient data and patient feedback 
 No real patient PII is used. This is a learning/demo system and must not be used for clinical decision-making.
 
 ## Metrics
-- classification_accuracy: 0.5
-- classification_f1_weighted: 0.5
-- regression_mae: 0.71
-- regression_rmse: 0.7201
-- regression_r2: 0.4815
-- clustering_silhouette: 0.5485
-- sentiment_precision_weighted: 0.25
-- sentiment_recall_weighted: 0.5
-- sentiment_f1_weighted: 0.3333
+- classification_accuracy: 0.92
+- classification_f1_weighted: 0.9195
+- regression_mae: 1.3634
+- regression_rmse: 1.6206
+- regression_r2: 0.7474
+- clustering_silhouette: 0.4624
+- sentiment_precision_weighted: 0.1111
+- sentiment_recall_weighted: 0.3333
+- sentiment_f1_weighted: 0.1667

@@ -1,10 +1,13 @@
 from pathlib import Path
 from typing import Optional
+import json
 
 import joblib
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
+
+from src.utils.sentiment_engine import HybridSentimentEngine
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -16,11 +19,16 @@ ASSOC_DIR = BASE_DIR / "artifacts" / "association"
 risk_model = joblib.load(TAB_DIR / "risk_classifier.pkl")
 risk_encoder = joblib.load(TAB_DIR / "risk_label_encoder.pkl")
 los_model = joblib.load(TAB_DIR / "los_regressor.pkl")
-cluster_model = joblib.load(CLUSTER_DIR / "kmeans.pkl")
-sentiment_model = joblib.load(NLP_DIR / "sentiment_model.pkl")
-tfidf_vectorizer = joblib.load(NLP_DIR / "tfidf_vectorizer.pkl")
+cluster_model = joblib.load(CLUSTER_DIR / "kmeans_pipeline.pkl")
+sentiment_engine = HybridSentimentEngine()
 
-app = FastAPI(title="HealthAI API", version="1.0.0")
+cluster_names = {}
+cluster_names_path = CLUSTER_DIR / "cluster_names.json"
+if cluster_names_path.exists():
+    with open(cluster_names_path, "r") as f:
+        cluster_names = json.load(f)
+
+app = FastAPI(title="HealthAI API", version="2.0.0")
 
 
 class PatientInput(BaseModel):
@@ -67,15 +75,18 @@ def predict_los(data: PatientInput):
 @app.post("/cluster/patient")
 def cluster_patient(data: PatientInput):
     df = pd.DataFrame([data.model_dump()])
-    cluster = cluster_model.predict(df)[0]
-    return {"cluster_id": int(cluster)}
+    cluster = int(cluster_model.predict(df)[0])
+    cluster_name = cluster_names.get(str(cluster), cluster_names.get(cluster, f"Cluster {cluster}"))
+    return {
+        "cluster_id": cluster,
+        "cluster_name": cluster_name
+    }
 
 
 @app.post("/predict/sentiment")
 def predict_sentiment(data: TextInput):
-    X = tfidf_vectorizer.transform([data.review])
-    pred = sentiment_model.predict(X)[0]
-    return {"sentiment": str(pred)}
+    result = sentiment_engine.predict(data.review)
+    return result
 
 
 @app.get("/association/rules")

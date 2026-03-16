@@ -13,24 +13,35 @@ ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
 df = pd.read_csv(DATA_PATH)
 
-X = df["review"].astype(str)
-y = df["sentiment"].astype(str)
+# keep only valid rows
+df = df.dropna(subset=["review", "sentiment"]).copy()
+df["review"] = df["review"].astype(str).str.strip()
+df["sentiment"] = df["sentiment"].astype(str).str.strip().str.lower()
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+X = df["review"]
+y = df["sentiment"]
+
+vectorizer = TfidfVectorizer(
+    lowercase=True,
+    stop_words="english",
+    ngram_range=(1, 2),
+    min_df=1,
+    max_features=5000
 )
 
-vectorizer = TfidfVectorizer(stop_words="english")
-X_train_vec = vectorizer.fit_transform(X_train)
-X_test_vec = vectorizer.transform(X_test)
+X_vec = vectorizer.fit_transform(X)
 
-model = LogisticRegression(max_iter=1000)
-model.fit(X_train_vec, y_train)
+model = LogisticRegression(
+    max_iter=2000,
+    class_weight="balanced",
+    random_state=42
+)
 
-preds = model.predict(X_test_vec)
+model.fit(X_vec, y)
+preds = model.predict(X_vec)
 
-print(classification_report(y_test, preds))
+print(classification_report(y, preds, zero_division=0))
 
 joblib.dump(model, ARTIFACT_DIR / "sentiment_model.pkl")
 joblib.dump(vectorizer, ARTIFACT_DIR / "tfidf_vectorizer.pkl")
-print("[OK] Sentiment model saved")
+print("[OK] Sentiment ML model saved")
